@@ -16,4 +16,30 @@
 //   * For the Ok variant, print any message you want
 //   * For the Err variant, print out the error message
 
-fn main() {}
+#[derive(Debug)]
+struct Adult {
+    age: i32,
+    name: String,
+}
+
+impl Adult {
+    fn new(age: i32, name: &str) -> Result<Self, String> {
+        if age < 21 {
+            return Err(format!("Cannot create record for {:?} as they are {:?} years old, less than 21", name, age));
+        }
+        Ok(Self { age, name: name.to_string() })
+    }
+}
+fn main() {
+    let candidates = [
+        (34, "Meister Eckhart"),
+        (19, "Harvey Businessman"),
+    ];
+    for person in candidates {
+        let new_adult = Adult::new(person.0, person.1);
+        match new_adult {
+            Ok(verified) => println!("{:?} is {:?} years old", verified.name, verified.age),
+            Err(err_str) => println!("{:?}", err_str),
+        }
+    }
+}

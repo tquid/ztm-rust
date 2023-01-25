@@ -8,4 +8,15 @@
 // * Use a function to display your last name
 // * Use the println macro to display messages to the terminal
 
-fn main() {}
+fn first_name() {
+    println!("JB");
+}
+
+fn last_name() {
+    println!("Bell");
+}
+
+fn main() {
+    first_name();
+    last_name();
+}

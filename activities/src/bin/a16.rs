@@ -9,6 +9,20 @@
 // * The locker assignment should use an Option<i32>
 
 // * Use a struct containing the student's name and locker assignment
-// * The locker assignment should use an Option<i32>
+struct Student{
+    // * The locker assignment should use an Option<i32>
+    locker: Option<i32>,
+    name: String,
+}
 
-fn main() {}
+fn main() {
+    let bob = Student {
+        locker: Some(346),
+        name: "Bob Fotheringswaite".to_owned(),
+    };
+    println!("Name: {:?}", bob.name);
+    match bob.locker {
+        Some(id) => println!("Locker: {:?}", id),
+        None => println!("No designated locker"),
+    }
+}

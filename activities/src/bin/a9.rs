@@ -9,4 +9,17 @@
 // * Destructure the return value into two variables
 // * Use an if..else if..else block to determine what to print
 
-fn main() {}
+fn silly_tuple() -> (i32, i32) {
+    (5, 5)
+}
+
+fn main() {
+    let (x, y) = silly_tuple();
+    if y > 5 {
+        println!(">5");
+    } else if y < 5 {
+        println!("<5");
+    } else {
+        println!("=5");
+    }
+}

@@ -23,6 +23,9 @@ fn clamp(n: i32, lower: i32, upper: i32) -> i32 {
 
 /// Divides a and b.
 fn div(a: i32, b: i32) -> Option<i32> {
+    if b == 0 {
+        return None;
+    }
     Some(a / b)
 }
 
@@ -32,3 +35,29 @@ fn concat(first: &str, second: &str) -> String {
 }
 
 fn main() {}
+
+#[cfg(test)]
+mod test {
+    use crate::*;
+    #[test]
+    fn check_clamp_equal() {
+        assert_eq!(clamp(3, 3, 3), 3, "Equal inputs should make a sensible result");
+    }
+    #[test]
+    fn check_clamp_lower() {
+        assert_eq!(clamp(3, 4, 5), 4, "'n' lower than low bound should return low bound")
+    }
+    #[test]
+    fn check_clamp_upper() {
+        assert_eq!(clamp(6, 4, 5), 5, "'n' higher than high bound should return high bound")
+    }
+    #[test]
+    fn check_clamp_negative() {
+        assert_eq!(clamp(-100, -10, -1), -10, "Negative ranges should work")
+    }
+    #[test]
+    fn check_div() {
+        let result = div(10, 0);
+        assert_eq!(result, None, "Divide by zero")
+    }
+}
