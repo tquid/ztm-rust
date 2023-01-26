@@ -187,3 +187,42 @@ fn main() {
         }
     }
 }
+
+/* Instructor comments:
+
+- enumerating over ranges like this for item in 0..sorted_bills.len() isn't
+considered idiomatic. you can use for (index, value) in
+sorted_bills.iter().enumerate()
+
+- consider using the entry API instead of get_mut on L101
+https://doc.rust-lang.org/std/collections/hash_map/struct.HashMap.html#method.entry.
+it will reduce the entire if else block into a single function call
+
+- on L134 & 164 only Some is handled with the Option returned by get_mut.
+If the key is missing for whatever reason, then this will be a bug because
+there's no feedback that the update failed. match or if let will work here
+
+- bills_to_vec and index_bills is killing performance. normally I wouldn't
+worry too much about a few .clone() or .to_owned(), but these have heavy
+usage. in delete_bill and edit_bill for example, bills_to_vec gets called
+twice (one direct, one via index_bills) so you end up with 3 copies of the
+bill names in memory, two of which then get destroyed at the end of the
+function.
+
+- consider making a few struct: Bill for the bill name and amount, and
+another struct  (like Bills or something) to manage all the bills and allow
+edit/retrieval. this should reduce some of your code in edit and delete
+
+- there a lots of ways to implement a Bills struct, but a naive
+implementation using Vec<Bill> as your backing storage should be fine.
+since you opted to sort the bills by name, you can perform the sorting
+operation only on additions/removals. this will allow you to iterate the
+Vec<Bill> using .enumerate() when you want to display a list of bills to
+the user, and you'll get the index number for editing for free
+
+in my original "tips" section, I indicate that a hashmap would be easier
+for editing and stuff. but this was assuming constant keys for access.
+since you are using sorting (which effectively changes the keys when
+listing bills), there is no need for a HashMap at all
+
+*/
