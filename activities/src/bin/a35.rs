@@ -54,4 +54,30 @@ enum Tile {
     Wood,
 }
 
-fn main() {}
+fn main() {
+    let tiles: Vec<Tile> = vec![
+        Tile::Treasure(TreasureChest {
+            content: TreasureItem::Gold,
+            amount: 200,
+        }),
+        Tile::Wood,
+        Tile::Water(Pressure(4)),
+        Tile::Grass,
+        Tile::Brick(BrickStyle::Gray),
+        Tile::Brick(BrickStyle::Dungeon),
+    ];
+    let _: Vec<()> = tiles.into_iter().map(|tile| match tile {
+        Tile::Brick(color @ (BrickStyle::Gray | BrickStyle::Red)) => {
+            println!("The brick is color {:?}", color)
+        }
+        Tile::Brick(s @ _) => println!("{:?} brick", s),
+        Tile::Grass | Tile::Sand | Tile::Dirt => println!("Ground tile"),
+        Tile::Treasure(TreasureChest {
+            content: TreasureItem::Gold,
+            amount,
+        }) if amount >= 100 => println!("Lots of gold!"),
+        Tile::Water(Pressure(pressure)) if pressure >= 10 => println!("High water pressure!"),
+        Tile::Water(Pressure(pressure)) => println!("Water pressure level {}", pressure),
+        Tile::Treasure(_) | Tile::Wood => (),
+    }).collect();
+}
