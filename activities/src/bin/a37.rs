@@ -21,9 +21,37 @@
 //   * Hex digits use a radix value of 16
 // * Utilize the `thiserror` crate for your error type
 // * Run `cargo test --bin a37` to test your implementation
+use thiserror::Error;
+use std::convert::TryFrom;
 
 #[derive(Debug, Eq, PartialEq)]
 struct Rgb(u8, u8, u8);
+
+#[derive(Error, Debug)]
+enum RgbError {
+    #[error("Invalid RGB hex code")]
+    Invalid(String),
+    #[error("Parse failure")]
+    ParseError(#[from] std::num::ParseIntError),
+}
+
+impl TryFrom<&str> for Rgb {
+    type Error = RgbError;
+    fn try_from(hexstr: &str) -> Result<Rgb, RgbError> {
+        let chars: Vec<char> = hexstr.chars().collect();
+        if chars[0] != '#' || chars[1..].len() != 6 {
+            return Err(RgbError::Invalid("Invalid hex code".to_owned()));
+        }
+        let mut codes: Vec<u8> = vec![];
+        for hexchars in chars[1..].chunks(2) {
+            let hexdigits = hexchars.into_iter().collect::<String>();
+            let decimal = u8::from_str_radix(hexdigits.as_str(), 16)?;
+            codes.push(decimal);
+        }
+        println!("codes: {:?}", codes);
+        Ok(Rgb(codes[0], codes[1], codes[2]))
+    }
+}
 
 fn main() {
     // Use `cargo test --bin a37` to test your implementation

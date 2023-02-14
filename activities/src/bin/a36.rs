@@ -17,4 +17,14 @@ fn data() -> &'static [u64] {
 fn main() {
     // `stream` is an iterator of Option<&[u64]>
     let mut stream = data().chunks(2);
+    loop {
+        match stream.next() {
+            Some(&[a, b]) => println!("{a:?} + {b:} = {}", a + b),
+            Some(&[a]) => println!("Unpaired value: {:?}", a),
+            _ => {
+                println!("Data stream complete.");
+                break;
+            }
+        }
+    }
 }

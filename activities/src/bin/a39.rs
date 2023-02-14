@@ -27,6 +27,8 @@ use std::thread::{self, JoinHandle};
 enum LightMsg {
     // Add additional variants needed to complete the exercise
     ChangeColor(u8, u8, u8),
+    PowerOn,
+    PowerOff,
     Disconnect,
 }
 
@@ -37,9 +39,52 @@ enum LightStatus {
 
 fn spawn_light_thread(receiver: Receiver<LightMsg>) -> JoinHandle<LightStatus> {
     // Add code here to spawn a thread to control the light bulb
+    let handle = thread::spawn(move || {
+        let mut status = LightStatus::Off;
+        loop {
+            match receiver.recv() {
+                Ok(msg) => match msg {
+                    LightMsg::ChangeColor(r, g, b) => {
+                        println!("Changing color to ({}, {}, {})", r, g, b);
+                        println!("Light is currently {}", match &status {
+                            LightStatus::Off => "off",
+                            LightStatus::On => "on",
+                        });
+                    },
+                    LightMsg::PowerOn => {
+                        status = LightStatus::On;
+                        println!("Powered on");
+                    },
+                    LightMsg::PowerOff => {
+                        status = LightStatus::Off;
+                        println!("Powered off");
+                    },
+                    LightMsg::Disconnect => {
+                        println!("channel disconnected");
+                        status = LightStatus::Off;
+                        break;
+                    },
+                },
+                Err(_) => {
+                    println!("connection dropped");
+                    status = LightStatus::Off;
+                    break;
+                }
+            }
+        }
+        return status;
+    });
+    handle
 }
 
-fn main() {}
+fn main() {
+    let (light_tx, light_rx) = unbounded();
+    let light = spawn_light_thread(light_rx);
+    light_tx.send(LightMsg::ChangeColor(0, 0, 100)).unwrap();
+    light_tx.send(LightMsg::PowerOff).expect("Failed to power off");
+    light_tx.send(LightMsg::Disconnect).expect("Failed to disconnect?!");
+    light.join().expect("Something is amiss!");
+}
 
 #[cfg(test)]
 mod test {
