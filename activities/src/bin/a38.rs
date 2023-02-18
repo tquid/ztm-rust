@@ -26,4 +26,23 @@ fn msg_excited() -> &'static str {
     "!"
 }
 
-fn main() {}
+fn main() {
+    let hello = std::thread::spawn(|| {
+        msg_hello()
+    });
+    let threads = std::thread::spawn(|| {
+        msg_thread()
+    });
+    let excited = std::thread::spawn(|| {
+        msg_excited()
+    });
+    let mut msg = "".to_owned();
+    for thr in vec![hello, threads, excited] {
+        match thr.join() {
+            Ok(s) => msg.push_str(s),
+            Err(_) => println!("Oops"),
+        }
+    }
+
+    println!("{}", msg);
+}
