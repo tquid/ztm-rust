@@ -59,6 +59,12 @@ impl Default for DbId {
     }
 }
 
+impl From<DbId> for String {
+    fn from(id: DbId) -> Self {
+        format!("{}", id).to_owned()
+    }
+}
+
 impl FromStr for DbId {
     type Err = uuid::Error;
     fn from_str(id: &str) -> Result<Self, Self::Err> {
