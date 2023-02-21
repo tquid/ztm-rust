@@ -9,6 +9,7 @@ edition = "2018"
 chrono = "0.4.23"
 crossbeam-channel = "0.5.6"
 itertools = "0.10.5"
+parking_lot = "0.12.1"
 thiserror = "1.0.38"
 
 [lib]
