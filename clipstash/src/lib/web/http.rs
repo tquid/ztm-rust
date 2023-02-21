@@ -1,7 +1,7 @@
 use crate::data::AppDatabase;
 use crate::service;
 use crate::service::action;
-use crate::web::{ctx, form, renderer::Renderer, PageError};
+use crate::web::{ctx, form, renderer::Renderer, PageError, PASSWORD_COOKIE};
 use crate::{ServiceError, ShortCode};
 use rocket::form::{Contextual, Form};
 use rocket::http::{Cookie, CookieJar, Status};
@@ -9,14 +9,129 @@ use rocket::response::content::Html;
 use rocket::response::{status, Redirect};
 use rocket::{uri, State};
 
+
 #[rocket::get("/")]
 fn home(renderer: &State<Renderer<'_>>) -> Html<String> {
     let context = ctx::Home::default();
     Html(renderer.render(context, &[]))
 }
 
+#[rocket::post("/", data = "<form>")]
+pub async fn new_clip(
+    form: Form<Contextual<'_, form::NewClip>>,
+    database: &State<AppDatabase>,
+    renderer: &State<Renderer<'_>>,
+) -> Result<Redirect, (Status, Html<String>)> {
+    let form = form.into_inner();
+    if let Some(value) = form.value {
+        let req = service::ask::NewClip {
+            content: value.content,
+            title: value.title,
+            expires: value.expires,
+            password: value.password,
+        };
+        match action::new_clip(req, database.get_pool()).await {
+            Ok(clip) => Ok(Redirect::to(uri!(get_clip(shortcode = clip.shortcode)))),
+            Err(e) => {
+                eprintln!("internal error: {}", e);
+                Err((
+                    Status::InternalServerError,
+                    Html(renderer.render(
+                        ctx::Home::default(),
+                        &["A server error occurred. Please try again"],
+                    ))
+                ))
+            }
+        }
+    } else {
+        let errors = form
+            .context
+            .errors()
+            .map(|err| {
+                use rocket::form::error::ErrorKind;
+                if let ErrorKind::Validation(msg) = &err.kind {
+                    msg.as_ref()
+                } else {
+                    eprintln!("unhandled error: {}", err);
+                    "An error occurred, please try again"
+                }
+            })
+            .collect::<Vec<_>>();
+        Err((
+            Status::BadRequest,
+            Html(
+                renderer.render_with_data(
+                    ctx::Home::default(),
+                    ("clip", &form.context),
+                    &errors
+                )
+            ),
+        ))
+    }
+}
 pub fn routes() -> Vec<rocket::Route> {
-    rocket::routes![home]
+    rocket::routes![home, get_clip, new_clip]
+}
+
+#[rocket::get("/clip/<shortcode>")]
+pub async fn get_clip(
+    shortcode: ShortCode,
+    database: &State<AppDatabase>,
+    renderer: &State<Renderer<'_>>,
+) -> Result<status::Custom<Html<String>>, PageError> {
+
+    fn render_with_status<T: ctx::PageContext + serde::Serialize + std::fmt::Debug>(
+        status: Status,
+        context: T,
+        renderer: &Renderer,
+    ) -> Result<status::Custom<Html<String>>, PageError> {
+        Ok(status::Custom(status, Html(renderer.render(context, &[]))))
+    }
+
+    match action::get_clip(shortcode.clone().into(), database.get_pool()).await {
+        Ok(clip) => {
+            let context = ctx::ViewClip::new(clip);
+            render_with_status(Status::Ok, context, renderer)
+        },
+        Err(e) => match e {
+            ServiceError::PermissionError(_) => {
+                let context = ctx::PasswordRequired::new(shortcode);
+                render_with_status(Status::Unauthorized, context, renderer)
+            },
+            ServiceError::NotFound => Err(PageError::NotFound("Clip not found".to_owned())),
+            _ => Err(PageError::Internal("server error".to_owned()))
+        }
+    }
+}
+
+#[rocket::post("/clip/<shortcode>", data = "<form>")]
+pub async fn submit_clip_password(
+    cookies: &CookieJar<'_>,
+    form: Form<Contextual<'_, form::GetPasswordProtectedClip>>,
+    shortcode: ShortCode,
+    database: &State<AppDatabase>,
+    renderer: &State<Renderer<'_>>,
+) -> Result<Html<String>, PageError> {
+    if let Some(form) = &form.value {
+        let req = service::ask::GetClip {
+            shortcode: shortcode.clone(),
+            password: form.password.clone(),
+        };
+        match action::get_clip(req, database.get_pool()).await {
+            Ok(clip) => {
+                let context = ctx::ViewClip::new(clip);
+                cookies.add(Cookie::new(
+                    PASSWORD_COOKIE,
+                    form.password.clone().into_inner().unwrap_or_default(),
+                ));
+                Ok(Html(renderer.render(context, &[])))
+            }
+        }
+    }
+}
+
+pub fn routes() -> Vec<rocket::Route> {
+    rocket::routes![home, get_clip, new_clip]
 }
 
 pub mod catcher {

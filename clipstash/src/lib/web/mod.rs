@@ -3,6 +3,8 @@ pub mod renderer;
 pub mod form;
 pub mod http;
 
+pub const PASSWORD_COOKIE: &str = "password";
+
 #[derive(rocket::Responder)]
 pub enum PageError {
     #[response(status = 500)]
@@ -12,7 +14,7 @@ pub enum PageError {
     #[response(status = 404)]
     NotFound(String),
     #[response(status = 500)]
-    Internatl(String),
+    Internal(String),
 }
 
 impl From<handlebars::RenderError> for PageError {
