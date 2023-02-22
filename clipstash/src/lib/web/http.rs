@@ -125,6 +125,15 @@ pub async fn submit_clip_password(
                     form.password.clone().into_inner().unwrap_or_default(),
                 ));
                 Ok(Html(renderer.render(context, &[])))
+            },
+            Err(e) => match e {
+                ServiceError::PermissionError(e) => {
+                    let context = ctx::PasswordRequest::new(shortcode);
+                    Ok(Html.renderer.render(context, &[e.as_str()]))
+                }
+                ServiceError::NotFound => PageError::NotFound("Clip not found".to_owned()),
+                _ => Err(PageError::Internal("server error".to_owned())),
+                
             }
         }
     }
