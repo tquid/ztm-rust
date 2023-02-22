@@ -70,7 +70,7 @@ pub async fn new_clip(
     }
 }
 pub fn routes() -> Vec<rocket::Route> {
-    rocket::routes![home, get_clip, new_clip]
+    rocket::routes![home, get_clip, new_clip, submit_clip_password]
 }
 
 #[rocket::get("/clip/<shortcode>")]
@@ -128,19 +128,20 @@ pub async fn submit_clip_password(
             },
             Err(e) => match e {
                 ServiceError::PermissionError(e) => {
-                    let context = ctx::PasswordRequest::new(shortcode);
-                    Ok(Html.renderer.render(context, &[e.as_str()]))
+                    let context = ctx::PasswordRequired::new(shortcode);
+                    Ok(Html(renderer.render(context, &[e.as_str()])))
                 }
-                ServiceError::NotFound => PageError::NotFound("Clip not found".to_owned()),
+                ServiceError::NotFound => Err(PageError::NotFound("Clip not found".to_owned())),
                 _ => Err(PageError::Internal("server error".to_owned())),
-                
             }
         }
+    } else {
+        let context = ctx::PasswordRequired::new(shortcode);
+        Ok(Html(renderer.render(
+            context,
+            &["A password is required to view this clip"],
+        )))
     }
-}
-
-pub fn routes() -> Vec<rocket::Route> {
-    rocket::routes![home, get_clip, new_clip]
 }
 
 pub mod catcher {
