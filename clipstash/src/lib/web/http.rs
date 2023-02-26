@@ -60,7 +60,13 @@ pub async fn new_clip(
             .collect::<Vec<_>>();
         Err((
             Status::BadRequest,
-            Html(renderer.render_with_data(ctx::Home::default(), ("clip", &form.context), &errors)),
+            Html(
+                renderer.render_with_data(
+                    ctx::Home::default(),
+                    ("clip", &form.context),
+                    &errors
+                )
+            ),
         ))
     }
 }

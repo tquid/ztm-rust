@@ -4,13 +4,13 @@ pub mod query;
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use sqlx::Sqlite;
-use uuid::Uuid;
 use std::str::FromStr;
+use uuid::Uuid;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DataError {
     #[error("Database error: {0}")]
-    Database(#[from] sqlx::Error)
+    Database(#[from] sqlx::Error),
 }
 
 pub type AppDatabase = Database<Sqlite>;
@@ -30,7 +30,9 @@ impl Database<Sqlite> {
             Ok(pool) => Self(pool),
             Err(e) => {
                 eprintln!("{}\n", e);
-                eprintln!("If the database has not yet been created, run:\n    $ sqlx database setup\n");
+                eprintln!(
+                    "If the database has not yet been created, run:\n    $ sqlx database setup\n"
+                );
                 panic!("database connection error");
             }
         }
@@ -61,7 +63,7 @@ impl Default for DbId {
 
 impl From<DbId> for String {
     fn from(id: DbId) -> Self {
-        format!("{}", id).to_owned()
+        format!("{}", id.0)
     }
 }
 

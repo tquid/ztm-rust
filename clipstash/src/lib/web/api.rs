@@ -18,8 +18,8 @@ pub enum ApiKeyError {
     #[error("API key not found")]
     #[response(status = 404, content_type = "json")]
     NotFound(String),
-    #[response(status = 400, content_type = "json")]
     #[error("invalid API key format")]
+    #[response(status = 400, content_type = "json")]
     DecodeError(String),
 }
 
@@ -119,10 +119,12 @@ impl<'r> FromRequest<'r> for ApiKey {
 }
 
 #[rocket::get("/key")]
-pub async fn new_api_key(database: &State<AppDatabase>) -> Result<Json<&str>, ApiError> {
+pub async fn new_api_key(database: &State<AppDatabase>)
+    -> Result<Json<&str>, ApiError>
+{
     let api_key = action::generate_api_key(database.get_pool()).await?;
-    println!("API key: {}", api_key.to_base64());
-    Ok(Json("API key generated. See logs for details."))
+    println!("Api Key: {}", api_key.to_base64());
+    Ok(Json("Api key generated. See logs for details."))
 }
 
 #[rocket::get("/<shortcode>")]
@@ -142,7 +144,7 @@ pub async fn get_clip(
             .map(|cookie| cookie.value())
             .map(|raw_password| Password::new(raw_password.to_string()).ok())
             .flatten()
-            .unwrap_or_else(Password::default),
+            .unwrap_or_else(Password::default)
     };
     let clip = action::get_clip(req, database.get_pool()).await?;
     hit_counter.hit(shortcode.into(), 1);
@@ -159,7 +161,7 @@ pub async fn new_clip(
     Ok(Json(clip))
 }
 
-#[rocket::post("/", data = "<req>")]
+#[rocket::put("/", data = "<req>")]
 pub async fn update_clip(
     req: Json<service::ask::UpdateClip>,
     database: &State<AppDatabase>,
@@ -181,7 +183,7 @@ pub mod catcher {
     #[catch(default)]
     fn default(req: &Request) -> Json<&'static str> {
         eprintln!("General error: {:?}", req);
-        Json("comething went wrong...")
+        Json("something went wrong...")
     }
 
     #[catch(500)]
@@ -206,13 +208,6 @@ pub mod catcher {
     }
 
     pub fn catchers() -> Vec<Catcher> {
-        catchers![
-            not_found,
-            default,
-            internal_error,
-            not_found,
-            request_error,
-            missing_api_key
-        ]
+        catchers![not_found, default, internal_error, missing_api_key, request_error]
     }
 }

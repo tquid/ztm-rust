@@ -56,7 +56,7 @@ pub async fn revoke_api_key(
     Ok(query::revoke_api_key(api_key, pool).await?)
 }
 
+/// Determines if an [`ApiKey`] is valid.
 pub async fn api_key_is_valid(api_key: ApiKey, pool: &DatabasePool) -> Result<bool, ServiceError> {
-    let api_key = ApiKey::default();
     Ok(query::api_key_is_valid(api_key, pool).await?)
 }

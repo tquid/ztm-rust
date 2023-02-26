@@ -107,7 +107,7 @@ pub enum RevocationStatus {
 pub async fn revoke_api_key(api_key: ApiKey, pool: &DatabasePool) -> Result<RevocationStatus> {
     let bytes = api_key.clone().into_inner();
     Ok(
-        sqlx::query!("DELETE FROM api_keys WHERE api_key == ?", bytes)
+        sqlx::query!("DELETE FROM api_keys WHERE api_key = ?", bytes)
             .execute(pool)
             .await
             .map(|result| match result.rows_affected() {
