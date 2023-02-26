@@ -1,6 +1,6 @@
 pub mod field;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -23,6 +23,7 @@ pub enum ClipError {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Clip {
+    #[serde(skip)]
     pub clip_id: field::ClipId,
     pub shortcode: field::ShortCode,
     pub content: field::Content,
