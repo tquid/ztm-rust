@@ -2,6 +2,7 @@ use crate::data::AppDatabase;
 use crate::service;
 use crate::service::action;
 use crate::web::{ctx, form, renderer::Renderer, PageError, PASSWORD_COOKIE};
+use crate::HitCounter;
 use crate::{ServiceError, ShortCode};
 use rocket::form::{Contextual, Form};
 use rocket::http::hyper::Service;
@@ -9,7 +10,6 @@ use rocket::http::{Cookie, CookieJar, Status};
 use rocket::response::content::Html;
 use rocket::response::{status, Redirect};
 use rocket::{uri, State};
-
 
 #[rocket::get("/")]
 fn home(renderer: &State<Renderer<'_>>) -> Html<String> {
@@ -40,7 +40,7 @@ pub async fn new_clip(
                     Html(renderer.render(
                         ctx::Home::default(),
                         &["A server error occurred. Please try again"],
-                    ))
+                    )),
                 ))
             }
         }
@@ -60,27 +60,18 @@ pub async fn new_clip(
             .collect::<Vec<_>>();
         Err((
             Status::BadRequest,
-            Html(
-                renderer.render_with_data(
-                    ctx::Home::default(),
-                    ("clip", &form.context),
-                    &errors
-                )
-            ),
+            Html(renderer.render_with_data(ctx::Home::default(), ("clip", &form.context), &errors)),
         ))
     }
-}
-pub fn routes() -> Vec<rocket::Route> {
-    rocket::routes![home, get_clip, new_clip, submit_clip_password, get_raw_clip]
 }
 
 #[rocket::get("/clip/<shortcode>")]
 pub async fn get_clip(
     shortcode: ShortCode,
     database: &State<AppDatabase>,
+    hit_counter: &State<HitCounter>,
     renderer: &State<Renderer<'_>>,
 ) -> Result<status::Custom<Html<String>>, PageError> {
-
     fn render_with_status<T: ctx::PageContext + serde::Serialize + std::fmt::Debug>(
         status: Status,
         context: T,
@@ -91,17 +82,18 @@ pub async fn get_clip(
 
     match action::get_clip(shortcode.clone().into(), database.get_pool()).await {
         Ok(clip) => {
+            hit_counter.hit(shortcode.clone(), 1);
             let context = ctx::ViewClip::new(clip);
             render_with_status(Status::Ok, context, renderer)
-        },
+        }
         Err(e) => match e {
             ServiceError::PermissionError(_) => {
                 let context = ctx::PasswordRequired::new(shortcode);
                 render_with_status(Status::Unauthorized, context, renderer)
-            },
+            }
             ServiceError::NotFound => Err(PageError::NotFound("Clip not found".to_owned())),
-            _ => Err(PageError::Internal("server error".to_owned()))
-        }
+            _ => Err(PageError::Internal("server error".to_owned())),
+        },
     }
 }
 
@@ -110,6 +102,7 @@ pub async fn submit_clip_password(
     cookies: &CookieJar<'_>,
     form: Form<Contextual<'_, form::GetPasswordProtectedClip>>,
     shortcode: ShortCode,
+    hit_counter: &State<HitCounter>,
     database: &State<AppDatabase>,
     renderer: &State<Renderer<'_>>,
 ) -> Result<Html<String>, PageError> {
@@ -120,13 +113,14 @@ pub async fn submit_clip_password(
         };
         match action::get_clip(req, database.get_pool()).await {
             Ok(clip) => {
+                hit_counter.hit(shortcode.clone(), 1);
                 let context = ctx::ViewClip::new(clip);
                 cookies.add(Cookie::new(
                     PASSWORD_COOKIE,
                     form.password.clone().into_inner().unwrap_or_default(),
                 ));
                 Ok(Html(renderer.render(context, &[])))
-            },
+            }
             Err(e) => match e {
                 ServiceError::PermissionError(e) => {
                     let context = ctx::PasswordRequired::new(shortcode);
@@ -134,7 +128,7 @@ pub async fn submit_clip_password(
                 }
                 ServiceError::NotFound => Err(PageError::NotFound("Clip not found".to_owned())),
                 _ => Err(PageError::Internal("server error".to_owned())),
-            }
+            },
         }
     } else {
         let context = ctx::PasswordRequired::new(shortcode);
@@ -148,12 +142,13 @@ pub async fn submit_clip_password(
 #[rocket::get("/clip/raw/<shortcode>")]
 pub async fn get_raw_clip(
     cookies: &CookieJar<'_>,
-    shortcode: &str,
+    shortcode: ShortCode,
+    hit_counter: &State<HitCounter>,
     database: &State<AppDatabase>,
 ) -> Result<status::Custom<String>, Status> {
     use crate::domain::clip::field::Password;
     let req = service::ask::GetClip {
-        shortcode: shortcode.into(),
+        shortcode: shortcode.clone(),
         password: cookies
             .get(PASSWORD_COOKIE)
             .map(|cookie| cookie.value())
@@ -163,15 +158,21 @@ pub async fn get_raw_clip(
     };
     match action::get_clip(req, database.get_pool()).await {
         Ok(clip) => {
+            hit_counter.hit(shortcode.clone(), 1);
             Ok(status::Custom(Status::Ok, clip.content.into_inner()))
         }
         Err(e) => match e {
             ServiceError::PermissionError(msg) => Ok(status::Custom(Status::Unauthorized, msg)),
             ServiceError::NotFound => Err(Status::NotFound),
-            _ => Err(Status::InternalServerError)
-        }
+            _ => Err(Status::InternalServerError),
+        },
     }
 }
+
+pub fn routes() -> Vec<rocket::Route> {
+    rocket::routes![home, get_clip, new_clip, submit_clip_password, get_raw_clip]
+}
+
 pub mod catcher {
     use rocket::Request;
     use rocket::{catch, catchers, Catcher};

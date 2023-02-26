@@ -1,6 +1,6 @@
 use crate::data::DatabasePool;
-use crate::ShortCode;
 use crate::service::{self, ServiceError};
+use crate::ShortCode;
 use crossbeam_channel::TryRecvError;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use parking_lot::Mutex;
@@ -21,18 +21,18 @@ enum HitCountError {
 
 enum HitCountMsg {
     Commit,
-    Hit(ShortCode, u32)
+    Hit(ShortCode, u32),
 }
 
 pub struct HitCounter {
-    tx: Sender<HitCountMsg>
+    tx: Sender<HitCountMsg>,
 }
 
 impl HitCounter {
     fn commit_hits(
         hits: HitStore,
         handle: Handle,
-        pool: DatabasePool
+        pool: DatabasePool,
     ) -> Result<(), HitCountError> {
         let hits = Arc::clone(&hits);
 
@@ -56,7 +56,7 @@ impl HitCounter {
         msg: HitCountMsg,
         hits: HitStore,
         handle: Handle,
-        pool: DatabasePool
+        pool: DatabasePool,
     ) -> Result<(), HitCountError> {
         match msg {
             HitCountMsg::Commit => Self::commit_hits(hits.clone(), handle.clone(), pool.clone())?,
@@ -80,10 +80,22 @@ impl HitCounter {
 
             loop {
                 match rx_clone.try_recv() {
-                    Ok(msg) => if let Err(e) = Self::process_msg(msg, store.clone(), handle.clone(), pool.clone()) {
-                        eprintln!("message processing error: {}", e);
+                    Ok(msg) => {
+                        if let Err(e) =
+                            Self::process_msg(msg, store.clone(), handle.clone(), pool.clone())
+                        {
+                            eprintln!("message processing error: {}", e);
+                        }
+                    }
+                    Err(e) => match e {
+                        TryRecvError::Empty => {
+                            std::thread::sleep(Duration::from_secs(5));
+                            if let Err(e) = tx_clone.send(HitCountMsg::Commit) {
+                                eprintln!("error sending commit msg to hits channel: {}", e)
+                            }
+                        }
+                        _ => break,
                     },
-                    Err(e) => todo!(),
                 }
             }
         });
