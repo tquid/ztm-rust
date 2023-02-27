@@ -60,13 +60,7 @@ pub async fn new_clip(
             .collect::<Vec<_>>();
         Err((
             Status::BadRequest,
-            Html(
-                renderer.render_with_data(
-                    ctx::Home::default(),
-                    ("clip", &form.context),
-                    &errors
-                )
-            ),
+            Html(renderer.render_with_data(ctx::Home::default(), ("clip", &form.context), &errors)),
         ))
     }
 }
@@ -202,5 +196,48 @@ pub mod catcher {
 
     pub fn catchers() -> Vec<Catcher> {
         catchers![not_found, default, internal_error]
+    }
+}
+
+#[cfg(test)]
+pub mod test {
+    use crate::data::AppDatabase;
+    use crate::test::async_runtime;
+    use crate::web::test::client;
+    use rocket::http::Status;
+
+    #[test]
+    fn gets_home() {
+        let client = client();
+        let response = client.get("/").dispatch();
+        assert_eq!(response.status(), Status::Ok);
+    }
+
+    #[test]
+    fn error_on_missing_clip() {
+        let client = client();
+        let response = client.get("/clip/asdfadkfjal").dispatch();
+        assert_eq!(response.status(), Status::NotFound);
+    }
+
+    #[test]
+    fn requires_password_when_applicable() {
+        use crate::domain::clip::field::{Content, Expires, Password, Title};
+        use crate::service;
+        use rocket::http::{ContentType, Cookie};
+
+        let rt = async_runtime();
+
+        let client = client();
+        let db = client.rocket().state::<AppDatabase>().unwrap();
+
+        let req = service::ask::NewClip {
+            content: Content::new("content").unwrap(),
+            expires: Expires::default(),
+            password: Password::new("123".to_owned()).unwrap(),
+            title: Title::default(),
+        };
+        let clip = rt
+            .block_on(async move { service::action::new_clip(req, db.get_pool().clone())})
     }
 }
