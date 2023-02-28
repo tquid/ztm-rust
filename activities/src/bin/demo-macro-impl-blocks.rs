@@ -23,4 +23,14 @@ struct OtherTube {
     max_volume: Volume,
 }
 
+impl ReagentContainer for OtherTube {
+    fn max_volume(&self) -> Volume {
+        self.max_volume
+    }
+
+    fn current_volume(&self) -> {
+        self.current_volume
+    }
+}
+
 fn main() {}

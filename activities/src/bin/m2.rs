@@ -24,19 +24,36 @@ use std::ops::Deref;
 #[derive(Debug)]
 struct Id(usize);
 
-struct ContractorId(Id);
-struct EmployeeId(Id);
-struct GuestId(Id);
-struct InvestorId(Id);
-struct ManagerId(Id);
-struct VendorId(Id);
-
-impl Deref for ContractorId {
-    type Target = Id;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+macro_rules! generic_deref {
+    ($type:ty) => {
+        impl Deref for $type {
+            type Target = Id;
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+    };
 }
+
+struct ContractorId(Id);
+generic_deref!(ContractorId);
+struct EmployeeId(Id);
+generic_deref!(EmployeeId);
+struct GuestId(Id);
+generic_deref!(GuestId);
+struct InvestorId(Id);
+generic_deref!(InvestorId);
+struct ManagerId(Id);
+generic_deref!(ManagerId);
+struct VendorId(Id);
+generic_deref!(VendorId);
+
+// impl Deref for ContractorId {
+//     type Target = Id;
+//     fn deref(&self) -> &Self::Target {
+//         &self.0
+//     }
+// }
 
 /// This function can accept any type which can be dereferenced into an Id.
 fn check_id(id: &Id) {
