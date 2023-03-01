@@ -17,6 +17,19 @@ macro_rules! get {
     (first $count:literal items from $iterable:expr) => {
         $iterable.iter().take($count)
     };
+    // last count items from iterable
+    (last $count:literal items from $iterable:expr) => {{
+        let length = $iterable.len();
+        let nice_slice = $iterable.iter().skip(length - $count)
+    }};
+    // first item from iterable
+    (first item from $iterable:expr) => {
+        $iterable.iter().nth(0)
+    };
+    // last item from iterable
+    (last item from $iterable:expr) => {
+        $iterable.iter().nth_back(0)
+    };
 }
 
 fn main() {

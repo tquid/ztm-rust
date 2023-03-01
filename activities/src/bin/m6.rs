@@ -15,6 +15,21 @@
 // * `std::time::Instant` can be used to calculate elapsed time
 // * Use `stringify!` to get a string representation of the function name
 
+use std::time::Instant;
+
+macro_rules! fn_timer {
+    (
+        $function:ident
+        $(
+            $arg:tt
+        )*
+    ) => {{
+        println!("Call: {}", stringify!($function));
+        let start = Instant::now();
+        $function$($arg)*;
+        println!("Duration: {}", start.elapsed().as_nanos());
+    }};
+}
 fn sample_fn_1() {
     use std::time::Duration;
     std::thread::sleep(Duration::from_millis(2));
@@ -31,4 +46,8 @@ fn sample_fn_3(lhs: usize, rhs: usize) -> usize {
     lhs + rhs
 }
 
-fn main() {}
+fn main() {
+    fn_timer!(sample_fn_1());
+    fn_timer!(sample_fn_2(20));
+    fn_timer!(sample_fn_3(10, 30));
+}
